@@ -15,13 +15,13 @@ class WeatherResponse {
   });
 
   WeatherResponse copyWith({
-    CurrentWeather? currentWeather,
-    List<HourlyWeather>? hourlyWeather,
+    CurrentWeather? current,
+    List<HourlyWeather>? hourly,
     String? cityName,
   }) {
     return WeatherResponse(
-      current: currentWeather ?? this.current,
-      hourly: hourlyWeather ?? this.hourly,
+      current: current ?? this.current,
+      hourly: hourly ?? this.hourly,
       cityName: cityName ?? this.cityName,
     );
   }
@@ -30,7 +30,7 @@ class WeatherResponse {
     return WeatherResponse(
       current: CurrentWeather.fromMap(json['list'][0] as Map<String, dynamic>),
       hourly: List<HourlyWeather>.from(
-        json['List']?.map(
+        json['list']?.map(
           (x) => HourlyWeather.fromJson(x as Map<String, dynamic>),
         ),
       ),
