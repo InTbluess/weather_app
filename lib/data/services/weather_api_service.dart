@@ -32,15 +32,25 @@ Future<WeatherResponse?> fetchWeather(BuildContext context, String city) async {
     }
   } on DioException catch (e) {
     String errorMessage = '';
+
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
       errorMessage = 'Connection timed out. Please try again later.';
-    } else if (e.type == DioExceptionType.badResponse) {
-      errorMessage = 'Received invalid response from the server.';
+    } else if (e.response != null) {
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 404) {
+        errorMessage = 'City not found';
+      } else if (statusCode == 401) {
+        errorMessage = 'Invalid API key';
+      } else {
+        errorMessage = 'Something went wrong. Please try again.';
+      }
     } else {
-      errorMessage = 'An unexpected error occurred. Please try again.';
+      errorMessage = 'An unexpected error occurred.';
     }
-    ErrorHandler.showErrorHandler(context, errorMessage);
+
+    throw Exception(errorMessage);
   }
   return null;
 }
