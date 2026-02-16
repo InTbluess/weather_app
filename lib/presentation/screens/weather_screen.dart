@@ -23,10 +23,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
   String currentLocation = "New York";
   Gradient? _lastGradient;
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _searchWeather(currentLocation);
+  // }
+
   @override
   void initState() {
     super.initState();
-    _searchWeather(currentLocation);
+    _weatherFuture = fetchWeather(context, currentLocation);
   }
 
   @override
@@ -78,11 +84,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeInOutCubic,
+            curve: Curves.easeInOutCubicEmphasized,
             decoration: BoxDecoration(
               gradient:
                   _lastGradient ??
-                  getBackgroundGradient("Clear", DateTime.now()),
+                  const LinearGradient(
+                    colors: [
+                      Color.fromARGB(255, 25, 49, 59),
+                      Color.fromARGB(255, 13, 22, 29),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
             ),
             child: const Scaffold(
               backgroundColor: Colors.transparent,
@@ -135,25 +148,28 @@ class _WeatherScreenState extends State<WeatherScreen> {
         final textColor = Colors.white;
 
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 1000),
+          duration: const Duration(milliseconds: 1200),
           curve: Curves.easeInOutCubic,
           decoration: BoxDecoration(gradient: gradient),
           child: Scaffold(
             backgroundColor: Colors.transparent,
             appBar: AppBar(
-              toolbarHeight: 100,
+              toolbarHeight: 120,
               backgroundColor: Colors.transparent,
               elevation: 0,
               title: isSearching
-                  ? CupertinoSearchTextField(
-                      controller: _citySearch,
-                      style: TextStyle(color: textColor),
-                      itemColor: textColor,
-                      backgroundColor: textColor.withOpacity(0.15),
-                      autofocus: true,
-                      onSubmitted: (value) {
-                        _searchWeather(value);
-                      },
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 16.0),
+                      child: CupertinoSearchTextField(
+                        controller: _citySearch,
+                        style: TextStyle(color: textColor),
+                        itemColor: textColor,
+                        backgroundColor: textColor.withOpacity(0.15),
+                        autofocus: true,
+                        onSubmitted: (value) {
+                          _searchWeather(value);
+                        },
+                      ),
                     )
                   : Padding(
                       padding: const EdgeInsets.only(left: 14.0),
@@ -202,7 +218,10 @@ class _WeatherScreenState extends State<WeatherScreen> {
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32.0,
+                    vertical: 0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -254,6 +273,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         "Wind Speed: ${weather.current.windSpeed} m/s",
                         style: TextStyle(fontSize: 18, color: textColor),
                       ),
+                      // const SizedBox(height: 8),
                     ],
                   ),
                 ),

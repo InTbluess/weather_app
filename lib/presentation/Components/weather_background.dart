@@ -79,8 +79,8 @@ Gradient getBackgroundGradient(String weather, DateTime time) {
     case "Clouds":
       return const LinearGradient(
         colors: [
-          Color.fromARGB(255, 15, 43, 51),
           Color.fromARGB(255, 15, 77, 105),
+          Color.fromARGB(255, 15, 43, 51),
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
