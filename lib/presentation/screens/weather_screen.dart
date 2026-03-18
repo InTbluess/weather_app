@@ -7,6 +7,8 @@ import 'package:weather_app/core/helpers/weather_icon_helper.dart';
 import 'package:weather_app/data/models/weather_model.dart';
 import 'package:weather_app/data/services/weather_api_service.dart';
 import 'package:weather_app/presentation/Components/weather_background.dart';
+import 'package:weather_app/presentation/Components/weather_info_tile.dart';
+import 'package:weather_app/presentation/Components/hourly_forecast_card.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -172,7 +174,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       ),
                     )
                   : Padding(
-                      padding: const EdgeInsets.only(left: 14.0),
+                      padding: const EdgeInsets.only(left: 10.0),
                       child: Row(
                         children: [
                           Padding(
@@ -196,7 +198,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     ),
               actions: [
                 Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
+                  padding: const EdgeInsets.only(right: 14.0),
                   child: IconButton(
                     icon: Icon(
                       isSearching ? Icons.close : CupertinoIcons.search,
@@ -219,61 +221,163 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 32.0,
+                    horizontal: 28.0,
                     vertical: 0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "${weather.current.temp.toInt()}",
-                            style: TextStyle(
-                              fontSize: 72,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                "${weather.current.temp.toInt()}",
+                                style: TextStyle(
+                                  fontSize: 72,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                  height: 1,
+                                ),
+                              ),
+                              Text(
+                                "°C",
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
                           ),
                           Text(
-                            "°C",
-                            style: TextStyle(fontSize: 32, color: textColor),
+                            "Feels like ${weather.current.feelsLike.toInt()}°",
+                            style: TextStyle(fontSize: 18, color: textColor),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.arrow_upward, color: textColor),
+                          Text(
+                            "${weather.current.maxTemp.toInt()}°",
+                            style: TextStyle(fontSize: 22, color: textColor),
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            "/",
+                            style: TextStyle(fontSize: 22, color: textColor),
+                          ),
+                          SizedBox(width: 5),
+                          Icon(Icons.arrow_downward, color: textColor),
+                          Text(
+                            "${weather.current.minTemp.toInt()}°",
+                            style: TextStyle(fontSize: 22, color: textColor),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 28),
+
                       Row(
                         children: [
                           Icon(
                             getIcon(weather.current.sky, DateTime.now()),
-                            size: 32,
+                            size: 40,
                             color: textColor,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            weather.current.sky,
-                            style: TextStyle(fontSize: 24, color: textColor),
+                            capitalizeWords(weather.current.description),
+                            style: TextStyle(fontSize: 28, color: textColor),
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 32),
+
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
+                        childAspectRatio: 3.2,
+                        children: [
+                          WeatherInfoTile(
+                            icon: Icons.water_drop,
+                            label: "Humidity",
+                            value: "${weather.current.humidity} %",
+                          ),
+
+                          WeatherInfoTile(
+                            icon: Icons.air,
+                            label: "Wind",
+                            value: "${weather.current.windSpeed} m/s",
+                          ),
+
+                          WeatherInfoTile(
+                            icon: Icons.speed,
+                            label: "Pressure",
+                            value: "${weather.current.pressure} hPa",
+                          ),
+
+                          WeatherInfoTile(
+                            icon: Icons.cloud,
+                            label: "Clouds",
+                            value: "${weather.current.cloudiness} %",
+                          ),
+
+                          WeatherInfoTile(
+                            icon: Icons.visibility,
+                            label: "Visibility",
+                            value:
+                                "${(weather.current.visibility / 1000).toStringAsFixed(1)} km",
+                          ),
+
+                          WeatherInfoTile(
+                            icon: Icons.air,
+                            label: "Wind Gust",
+                            value: "${weather.current.windGust} m/s",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 26 ),
+
+                      Text(
+                        "Hourly Forecast",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+
                       const SizedBox(height: 16),
-                      Text(
-                        "Humidity: ${weather.current.humidity}%",
-                        style: TextStyle(fontSize: 18, color: textColor),
+
+                      Container(
+                        height: 250,
+                        child: ListView.builder(
+
+                          shrinkWrap: true,
+                          // physics: const NeverScrollableScrollPhysics(),
+                          itemCount: weather.hourly.take(8).length,
+                          itemBuilder: (context, index) {
+                            final hour = weather.hourly[index];
+                        
+                            return HourlyForecastTile(
+                              time: TimeOfDay.fromDateTime(
+                                hour.time,
+                              ).format(context),
+                              icon: getIcon(hour.sky, hour.time),
+                              temp: hour.temp.toInt(),
+                            );
+                          },
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Pressure: ${weather.current.pressure} hPa",
-                        style: TextStyle(fontSize: 18, color: textColor),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Wind Speed: ${weather.current.windSpeed} m/s",
-                        style: TextStyle(fontSize: 18, color: textColor),
-                      ),
-                      // const SizedBox(height: 8),
                     ],
                   ),
                 ),
