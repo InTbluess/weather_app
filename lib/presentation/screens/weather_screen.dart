@@ -359,7 +359,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       const SizedBox(height: 16),
 
                       Container(
-                        height: 250,
+                        height: 237,
                         child: ListView.builder(
 
                           shrinkWrap: true,
