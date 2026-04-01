@@ -28,17 +28,32 @@ class _WeatherScreenState extends State<WeatherScreen> {
   final TextEditingController _citySearch = TextEditingController();
 
   bool isSearching = false;
-  String currentLocation = "New York";
+  String currentLocation = "";
   Gradient? _lastGradient;
 
-  Future<void> _initLocation() async {
-    String city = await LocationService.getCityName();
+bool _showTimeoutError = false;
 
-    setState(() {
-      currentLocation = city;
-      _weatherFuture = fetchWeather(context, currentLocation);
-    });
-  }
+  Future<void> _initLocation() async {
+  _showTimeoutError = false;
+
+  // Start timeout timer
+  Future.delayed(const Duration(seconds: 10), () {
+    if (mounted && (_weatherFuture == null)) {
+      setState(() {
+        _showTimeoutError = true;
+      });
+    }
+  });
+
+  String city = await LocationService.getCityName();
+
+  if (!mounted) return;
+
+  setState(() {
+    currentLocation = city;
+    _weatherFuture = fetchWeather(context, currentLocation);
+  });
+}
 
   @override
   void initState() {
@@ -212,13 +227,54 @@ class _WeatherScreenState extends State<WeatherScreen> {
           );
         }
 
-        if (!snapshot.hasData || snapshot.data == null) {
-          return const Scaffold(
-  body: Center(
-    child: Text("No data available"),
-  ),
-);
-        }
+        if (snapshot.connectionState == ConnectionState.waiting ||
+    !snapshot.hasData) {
+  // If timeout reached → show error
+  if (_showTimeoutError) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color.fromARGB(255, 25, 49, 59),
+            Color.fromARGB(255, 13, 22, 29),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Text(
+            "No data available",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Otherwise → keep showing loader
+  return AnimatedContainer(
+    duration: const Duration(milliseconds: 800),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Color.fromARGB(255, 25, 49, 59),
+          Color.fromARGB(255, 13, 22, 29),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+    ),
+    child: const Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    ),
+  );
+}
 
         final weather = snapshot.data!;
 
