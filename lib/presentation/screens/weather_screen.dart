@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import 'package:weather_app/core/error/error_handler.dart';
 import 'package:weather_app/core/helpers/capitalizer.dart';
+import 'package:weather_app/core/helpers/locator.dart';
 import 'package:weather_app/core/helpers/weather_icon_helper.dart';
 import 'package:weather_app/data/models/weather_model.dart';
 import 'package:weather_app/data/services/weather_api_service.dart';
+import 'package:weather_app/presentation/Components/glass_tile.dart';
+import 'package:weather_app/presentation/Components/hourly_glass_card.dart';
 import 'package:weather_app/presentation/Components/weather_background.dart';
-import 'package:weather_app/presentation/Components/weather_info_tile.dart';
-import 'package:weather_app/presentation/Components/hourly_forecast_card.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -18,23 +20,33 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  Future<WeatherResponse?>? _weatherFuture;
+  Future<WeatherResponse?>? _weatherFuture = Future.delayed(
+    const Duration(milliseconds: 10),
+    () => null,
+  );
+
   final TextEditingController _citySearch = TextEditingController();
 
   bool isSearching = false;
   String currentLocation = "New York";
   Gradient? _lastGradient;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _searchWeather(currentLocation);
-  // }
+  Future<void> _initLocation() async {
+    String city = await LocationService.getCityName();
+
+    setState(() {
+      currentLocation = city;
+      _weatherFuture = fetchWeather(context, currentLocation);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _weatherFuture = fetchWeather(context, currentLocation);
+
+    Future.microtask(() {
+      _initLocation();
+    });
   }
 
   @override
@@ -78,6 +90,101 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
+  Widget temperatureChart(List hourly) {
+    final temps = hourly.take(8).map((e) => e.temp.toDouble()).toList();
+
+    final minTemp = temps.reduce((a, b) => a < b ? a : b);
+    final maxTemp = temps.reduce((a, b) => a > b ? a : b);
+    final range = maxTemp - minTemp;
+    final interval = (range / 4).ceilToDouble().clamp(1, double.infinity);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 16.0),
+      child: SizedBox(
+        height: 200,
+        child: LineChart(
+          LineChartData(
+            minY: (temps.reduce((a, b) => a < b ? a : b)).floorToDouble() - 2,
+            maxY: (temps.reduce((a, b) => a > b ? a : b)).ceilToDouble() + 2,
+
+            gridData: FlGridData(show: true),
+            borderData: FlBorderData(show: false),
+
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: interval,
+                  getTitlesWidget: (value, meta) {
+                    if (value == meta.max || value == meta.min) {
+                      return const SizedBox();
+                    }
+                    return Text(
+                      "${value.toInt()}",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    int index = value.toInt();
+                    if (index < 0 || index >= hourly.length) {
+                      return const SizedBox();
+                    }
+
+                    final time = TimeOfDay.fromDateTime(
+                      hourly[index].time,
+                    ).format(context);
+
+                    return Text(
+                      index == 0 ? "Now" : time,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            lineBarsData: [
+              LineChartBarData(
+                isCurved: false,
+                spots: List.generate(
+                  temps.length,
+                  (i) => FlSpot(i.toDouble(), temps[i]),
+                ),
+                color: Colors.white,
+                barWidth: 2,
+                dotData: FlDotData(show: true),
+
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [Colors.white.withOpacity(0.3), Colors.transparent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<WeatherResponse?>(
@@ -85,19 +192,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeInOutCubicEmphasized,
-            decoration: BoxDecoration(
-              gradient:
-                  _lastGradient ??
-                  const LinearGradient(
-                    colors: [
-                      Color.fromARGB(255, 25, 49, 59),
-                      Color.fromARGB(255, 13, 22, 29),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+            duration: const Duration(milliseconds: 800),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color.fromARGB(255, 25, 49, 59),
+                  Color.fromARGB(255, 13, 22, 29),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
             child: const Scaffold(
               backgroundColor: Colors.transparent,
@@ -108,39 +212,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
           );
         }
 
-        // if (snapshot.hasError) {
-        //   WidgetsBinding.instance.addPostFrameCallback((_) {
-        //     ErrorHandler.showErrorHandler(
-        //       context,
-        //       snapshot.error.toString().replaceFirst('Exception: ', ''),
-        //     );
-        //   });
-
-        //   return Container(
-        //     decoration: BoxDecoration(
-        //       gradient:
-        //           _lastGradient ??
-        //           getBackgroundGradient("Clear", DateTime.now()),
-        //     ),
-        //     child: const Scaffold(backgroundColor: Colors.transparent),
-        //   );
-        // }
-
         if (!snapshot.hasData || snapshot.data == null) {
           return const Scaffold(
-            body: Center(
-              child: Text(
-                "No data available",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          );
+  body: Center(
+    child: Text("No data available"),
+  ),
+);
         }
 
         final weather = snapshot.data!;
 
         final gradient = getBackgroundGradient(
-          // "Rain",
           weather.current.sky,
           DateTime.now(),
         );
@@ -305,47 +387,42 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         mainAxisSpacing: 14,
                         crossAxisSpacing: 14,
-                        childAspectRatio: 3.2,
+                        childAspectRatio: 2.0,
                         children: [
-                          WeatherInfoTile(
-                            icon: Icons.water_drop,
-                            label: "Humidity",
-                            value: "${weather.current.humidity} %",
+                          glassTile(
+                            Icons.water_drop,
+                            "Humidity",
+                            "${weather.current.humidity}%",
                           ),
-
-                          WeatherInfoTile(
-                            icon: Icons.air,
-                            label: "Wind",
-                            value: "${weather.current.windSpeed} m/s",
+                          glassTile(
+                            Icons.air,
+                            "Wind",
+                            "${weather.current.windSpeed} m/s",
                           ),
-
-                          WeatherInfoTile(
-                            icon: Icons.speed,
-                            label: "Pressure",
-                            value: "${weather.current.pressure} hPa",
+                          glassTile(
+                            Icons.speed,
+                            "Pressure",
+                            "${weather.current.pressure} hPa",
                           ),
-
-                          WeatherInfoTile(
-                            icon: Icons.cloud,
-                            label: "Clouds",
-                            value: "${weather.current.cloudiness} %",
+                          glassTile(
+                            Icons.cloud,
+                            "Clouds",
+                            "${weather.current.cloudiness}%",
                           ),
-
-                          WeatherInfoTile(
-                            icon: Icons.visibility,
-                            label: "Visibility",
-                            value:
-                                "${(weather.current.visibility / 1000).toStringAsFixed(1)} km",
+                          glassTile(
+                            Icons.visibility,
+                            "Visibility",
+                            "${(weather.current.visibility / 1000).toStringAsFixed(1)} km",
                           ),
-
-                          WeatherInfoTile(
-                            icon: Icons.air,
-                            label: "Wind Gust",
-                            value: "${weather.current.windGust} m/s",
+                          glassTile(
+                            Icons.air,
+                            "Wind Gust",
+                            "${weather.current.windGust} m/s",
                           ),
                         ],
                       ),
-                      const SizedBox(height: 26 ),
+
+                      const SizedBox(height: 26),
 
                       Text(
                         "Hourly Forecast",
@@ -356,28 +433,31 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
-                      Container(
-                        height: 237,
+                      SizedBox(
+                        height: 140,
                         child: ListView.builder(
-
-                          shrinkWrap: true,
-                          // physics: const NeverScrollableScrollPhysics(),
+                          scrollDirection: Axis.horizontal,
                           itemCount: weather.hourly.take(8).length,
                           itemBuilder: (context, index) {
                             final hour = weather.hourly[index];
-                        
-                            return HourlyForecastTile(
-                              time: TimeOfDay.fromDateTime(
-                                hour.time,
-                              ).format(context),
+
+                            return hourlyGlassCard(
+                              time: index == 0
+                                  ? "Now"
+                                  : TimeOfDay.fromDateTime(
+                                      hour.time,
+                                    ).format(context),
                               icon: getIcon(hour.sky, hour.time),
                               temp: hour.temp.toInt(),
                             );
                           },
                         ),
                       ),
+                      const SizedBox(height: 32),
+                      temperatureChart(weather.hourly),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
