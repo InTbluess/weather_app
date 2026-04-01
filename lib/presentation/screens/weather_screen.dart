@@ -49,7 +49,7 @@ bool _showTimeoutError = false;
 
   if (!mounted) return;
 
-  setState(() {b
+  setState(() {
     currentLocation = city;
     _weatherFuture = fetchWeather(context, currentLocation);
   });
